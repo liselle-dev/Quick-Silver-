@@ -1,0 +1,50 @@
+import json
+import time
+import random
+
+def lambda_handler(event, context):
+    """
+    Lambda to simulate toll payment processing with success/failure.
+    Receives vehicle ID, toll location, amount, and timestamp.
+    """
+
+    print("Received toll event:", json.dumps(event, indent=2))
+
+    # Extract toll information
+    vehicle_id = event.get("vehicleId")
+    toll_location = event.get("tollLocation")
+    amount = event.get("amount")
+    timestamp = event.get("timestamp")
+
+    # Simulate payment processing: randomly succeed or fail
+    payment_successful = random.choice([True, False])
+    transaction_id = f"TXN-{int(time.time() * 1000)}"  # fake transaction ID
+
+    if payment_successful:
+        status = "SUCCESS"
+        message = "Payment successful"
+    else:
+        status = "FAILED"
+        message = "Payment failed"
+
+    # Construct response
+    response = {
+        "message": message,
+        "vehicleId": vehicle_id,
+        "tollLocation": toll_location,
+        "amount": amount,
+        "timestamp": timestamp,
+        "transactionId": transaction_id,
+        "status": status
+    }
+
+    print("Payment response:", json.dumps(response, indent=2))
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps(response)
+    }
+
+
+
+
