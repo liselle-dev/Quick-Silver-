@@ -1,0 +1,10 @@
+// aws-setup.js
+import AWS from 'aws-sdk';
+
+AWS.config.update({
+  region: process.env.AWS_REGION,
+});
+
+export const dynamoDB = new AWS.DynamoDB.DocumentClient();
+export const cognito = new AWS.CognitoIdentityServiceProvider();
+export const sns = new AWS.SNS();

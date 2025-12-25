@@ -1,0 +1,26 @@
+// signIn.js
+import { cognito } from './aws-setup';
+
+export const signIn = async (email, password) => {
+  const params = {
+    AuthFlow: 'USER_PASSWORD_AUTH',
+    ClientId: process.env.COGNITO_APP_CLIENT_ID,
+    AuthParameters: {
+      USERNAME: email,
+      PASSWORD: password,
+    },
+  };
+
+  try {
+    const auth = await cognito.initiateAuth(params).promise();
+
+    return {
+      success: true,
+      idToken: auth.AuthenticationResult.IdToken,
+      accessToken: auth.AuthenticationResult.AccessToken,
+      refreshToken: auth.AuthenticationResult.RefreshToken,
+    };
+  } catch {
+    return { success: false, message: 'Invalid credentials' };
+  }
+};

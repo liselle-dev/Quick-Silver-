@@ -1,0 +1,26 @@
+// paymentProcessor.js
+import { dynamoDB, sns } from './aws-setup';
+
+export const processPayment = async (paymentData) => {
+  const transactionId = `TXN#${Date.now()}`;
+
+  await dynamoDB.put({
+    TableName: process.env.DYNAMODB_TABLE_NAME,
+    Item: {
+      PK: `USER#${paymentData.userId}`,
+      SK: transactionId,
+      entityType: 'TRANSACTION',
+      amount: paymentData.amount,
+      status: 'PAID',
+      createdAt: new Date().toISOString(),
+    },
+  }).promise();
+
+  await sns.publish({
+    TopicArn: process.env.SNS_TOPIC_ARN,
+    Message: `Payment successful for $${paymentData.amount}`,
+    Subject: 'QuickSilver Payment Confirmation',
+  }).promise();
+
+  return { success: true, transactionId };
+};
