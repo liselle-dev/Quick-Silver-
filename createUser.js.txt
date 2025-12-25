@@ -1,0 +1,31 @@
+// createUser.js
+import { cognito, dynamoDB } from './aws-setup';
+
+export const createUser = async (email, password, name) => {
+  const params = {
+    ClientId: process.env.COGNITO_APP_CLIENT_ID,
+    Username: email,
+    Password: password,
+    UserAttributes: [{ Name: 'email', Value: email }],
+  };
+
+  try {
+    await cognito.signUp(params).promise();
+
+    await dynamoDB.put({
+      TableName: process.env.DYNAMODB_TABLE_NAME,
+      Item: {
+        PK: `USER#${email}`,
+        SK: 'PROFILE',
+        name,
+        entityType: 'USER',
+        createdAt: new Date().toISOString(),
+      },
+    }).promise();
+
+    return { success: true, message: 'User registration successful' };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: 'User registration failed' };
+  }
+};
