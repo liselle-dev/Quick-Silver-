@@ -1,0 +1,22 @@
+utils/DynamoDBUtils.java
+
+package com.quicksilver.lambda.utils;
+
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Table;
+
+public class DynamoDBUtils {
+
+    private static final AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
+            .withRegion(System.getenv("REGION"))
+            .build();
+
+    private static final DynamoDB dynamoDB = new DynamoDB(client);
+
+    public static Table getTable(String tableName) {
+        return dynamoDB.getTable(tableName);
+    }
+}
+
