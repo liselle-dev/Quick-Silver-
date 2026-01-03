@@ -1,0 +1,57 @@
+TollTrackingApp.jsx
+
+
+import React from "react";
+
+const TollTrackingApp = () => {
+
+  const startTracking = () => {
+    if (!navigator.geolocation) {
+      console.error("Geolocation not supported");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        checkGeofence(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+      },
+      (error) => console.error("Location error:", error),
+      { enableHighAccuracy: true }
+    );
+  };
+
+  const checkGeofence = async (latitude, longitude) => {
+    try {
+      const response = await fetch(
+        "https://pkbl1aqink.execute-api.us-east-2.amazonaws.com/checkGeofence",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ latitude, longitude })
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.isInGeofence) {
+        console.log("✅ Inside toll zone → trigger payment");
+      } else {
+        console.log("❌ Outside toll zone");
+      }
+    } catch (err) {
+      console.error("Geofence check failed:", err);
+    }
+  };
+
+  return (
+    <div>
+      <h1>Quicksilver Toll App</h1>
+      <button onClick={startTracking}>Start Drive</button>
+    </div>
+  );
+};
+
+export default TollTrackingApp;
