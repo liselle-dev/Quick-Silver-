@@ -1,16 +1,31 @@
-model/PaymentRequest.java
-
 package com.quicksilver.lambda.model;
 
 public class PaymentRequest {
-    private String vehicleId;
-    private double amount;
-    private String paymentToken;
 
-    public String getVehicleId() { return vehicleId; }
-    public void setVehicleId(String vehicleId) { this.vehicleId = vehicleId; }
-    public double getAmount() { return amount; }
-    public void setAmount(double amount) { this.amount = amount; }
-    public String getPaymentToken() { return paymentToken; }
-    public void setPaymentToken(String paymentToken) { this.paymentToken = paymentToken; }
-}
+    private String userId;
+    private Double amount;
+    private String paymentMethod;
+
+    public PaymentRequest() {}
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public Double getAmount() {
+        return amount;
+    }
+
+    public void setAmount(Double amount) {
+        this.amount = amount;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void set
