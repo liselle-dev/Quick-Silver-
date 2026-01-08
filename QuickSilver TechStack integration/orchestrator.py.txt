@@ -1,0 +1,60 @@
+orchestrator.py
+
+
+import json
+from utils import update_dynamodb, publish_sns, log_message
+from config import TABLES
+from cognito import verify_cognito_token
+
+def handle_event(event):
+    """
+    Unified orchestrator for Quicksilver project.
+    Handles toll entry and payment processing.
+    """
+    try:
+        # 1️⃣ Verify Cognito token
+        token = event.get("authorization_token")
+        if not token:
+            return {"statusCode": 401, "body": "Authorization token missing"}
+        user_id = verify_cognito_token(token)
+
+        # 2️⃣ Determine action
+        action = event.get("action")  # "toll_entry" or "process_payment"
+
+        if action == "toll_entry":
+            log_message(f"Toll entry for user: {user_id}")
+            update_dynamodb(
+                table_name=TABLES["toll_passes"],
+                key={"userID": user_id, "id": "toll-entry"},
+                update_expression="SET toll_status = :status",
+                expression_values={":status": "PENDING"}
+            )
+            publish_sns("toll_entry", f"User {user_id} has entered the toll. Payment pending.")
+
+        elif action == "process_payment":
+            payment_status = event.get("payment_status", "FAILED").upper()
+            log_message(f"Processing payment for user: {user_id}, status: {payment_status}")
+            update_dynamodb(
+                table_name=TABLES["payments"],
+                key={"userID": user_id, "id": "payment"},
+                update_expression="SET status = :status",
+                expression_values={":status": payment_status}
+            )
+            if payment_status == "SUCCESS":
+                publish_sns("payment_success", f"User {user_id} payment successful.")
+            else:
+                publish_sns("payment_failed", f"User {user_id} payment failed.")
+
+        else:
+            return {"statusCode": 400, "body": f"Unknown action: {action}"}
+
+        return {"statusCode": 200, "body": json.dumps({"user": user_id, "action": action})}
+
+    except Exception as e:
+        log_message(f"Error: {str(e)}")
+        publish_sns("admin_alert", f"Error for user: {str(e)}")
+        return {"statusCode": 500, "body": str(e)}
+
+# AWS Lambda handler
+def lambda_handler(event, context):
+    return handle_event(event)

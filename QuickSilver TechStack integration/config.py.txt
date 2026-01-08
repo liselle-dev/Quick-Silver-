@@ -1,0 +1,31 @@
+config.py
+
+
+# ========================
+# DynamoDB Tables
+# ========================
+TABLES = {
+    "notifications": "QuickSilver-Notifications",
+    "payments": "QuickSilver-PaymentMethods",
+    "toll_passes": "QuickSilver-TollPasses",
+    "trips": "QuickSilver-Trips",
+    "vehicles": "QuickSilver-Vehicles"
+}
+
+# ========================
+# SNS Topics
+# ========================
+SNS_TOPICS = {
+    "toll_entry": "arn:aws:sns:us-east-2:142754574142:QuickSilverAlerts:22270aa4-85ca-418a-819c-27dcb644f42c",
+    "payment_success": "arn:aws:sns:us-east-2:142754574142:QuickSilverAlerts:5d8be738-911d-4b90-9abf-4acc2a77ac28",
+    "payment_failed": "arn:aws:sns:us-east-2:142754574142:QuickSilverAlerts:a494c418-b117-463d-82ca-4975a96ab3b1",
+    "general_alert": "arn:aws:sns:us-east-2:142754574142:bfbc2b73-9c6f-4692-88bf-6d41a1e8a056",
+    "admin_alert": "arn:aws:sns:us-east-2:142754574142:d3f2163d-0849-48b2-97ca-a991335fef66"
+}
+
+# ========================
+# Cognito Config
+# ========================
+COGNITO_USER_POOL_ID = "quicksilvercef3526c_userpool_cef3526c-dev"
+COGNITO_REGION = "us-east-2"
+COGNITO_KEYS_URL = f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}/.well-known/jwks.json"

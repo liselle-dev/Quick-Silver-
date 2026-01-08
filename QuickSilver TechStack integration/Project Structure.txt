@@ -1,0 +1,14 @@
+Project Structure
+
+
+quicksilver_integration/
+│
+├── lambda_integration/
+│   ├── __init__.py
+│   ├── config.py            # All table names, SNS ARNs, Cognito IDs
+│   ├── utils.py             # Logging, DynamoDB helpers, SNS helpers
+│   ├── cognito.py           # JWT token verification
+│   └── orchestrator.py      # Main integration logic (toll entry & payment)
+│
+├── requirements.txt
+└── README.md

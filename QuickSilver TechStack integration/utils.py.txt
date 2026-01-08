@@ -1,0 +1,38 @@
+utils.py
+
+
+import logging
+import boto3
+from config import SNS_TOPICS
+
+# ------------------------
+# Logging
+# ------------------------
+logging.basicConfig(level=logging.INFO)
+def log_message(msg):
+    logging.info(msg)
+
+# ------------------------
+# DynamoDB
+# ------------------------
+dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
+def update_dynamodb(table_name, key, update_expression, expression_values):
+    table = dynamodb.Table(table_name)
+    response = table.update_item(
+        Key=key,
+        UpdateExpression=update_expression,
+        ExpressionAttributeValues=expression_values,
+        ReturnValues="UPDATED_NEW"
+    )
+    log_message(f"DynamoDB Updated ({table_name}): {response}")
+    return response
+
+# ------------------------
+# SNS
+# ------------------------
+sns_client = boto3.client('sns', region_name='us-east-2')
+def publish_sns(topic_key, message):
+    topic_arn = SNS_TOPICS.get(topic_key)
+    response = sns_client.publish(TopicArn=topic_arn, Message=message)
+    log_message(f"SNS Published ({topic_key}): {message}")
+    return response

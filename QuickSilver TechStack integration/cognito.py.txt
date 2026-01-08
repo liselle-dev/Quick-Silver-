@@ -1,0 +1,20 @@
+cognito.py
+
+
+import requests
+import jwt
+from config import COGNITO_KEYS_URL
+from utils import log_message
+
+# Load Cognito public keys
+cognito_jwk = requests.get(COGNITO_KEYS_URL).json()
+
+def verify_cognito_token(token):
+    header = jwt.get_unverified_header(token)
+    key = next((k for k in cognito_jwk['keys'] if k['kid'] == header['kid']), None)
+    if not key:
+        raise Exception("Cognito public key not found")
+    public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+    payload = jwt.decode(public_key=public_key, jwt=token, algorithms=['RS256'], audience=None)
+    log_message(f"Cognito token verified for user: {payload['sub']}")
+    return payload['sub']  # return userID

@@ -1,0 +1,37 @@
+Quicksilver Integration Module Documentation
+
+
+Module Name: QuicksilverIntegration
+
+Overview:
+This Python module integrates AWS services for the Quicksilver Toll Booth system. It handles user authentication via Cognito, DynamoDB updates for toll passes and payments, and SNS notifications for toll entry, payment status, and admin alerts. It provides a single Lambda entry point to process all events securely and efficiently.
+
+Key Components and Purpose:
+
+Configuration: Contains all DynamoDB table names, SNS topic ARNs, and Cognito User Pool information, serving as a centralized reference for AWS resources.
+
+Utilities: Provides helper functions to log events, update DynamoDB tables, and publish SNS notifications, ensuring consistent and reliable interactions with AWS services.
+
+Cognito JWT Verification: Validates user tokens to ensure that only authenticated users can trigger toll or payment actions, maintaining security.
+
+Orchestrator / Main Logic: Processes API Gateway events, determines the action type (toll_entry or process_payment), updates DynamoDB tables, publishes SNS notifications based on action and payment status, and handles errors with admin alerts.
+
+Integration Flow:
+
+User signs in via Cognito → receives JWT token.
+
+API Gateway triggers Lambda with the token and requested action.
+
+Module validates token, updates DynamoDB, and sends SNS notifications.
+
+Logs all actions; errors trigger notifications to admin.
+
+AWS Services Used:
+
+DynamoDB: Stores toll passes, payments, trips, vehicles, and notifications.
+
+SNS: Sends notifications for toll entry, payment success/failure, general, and admin alerts.
+
+Cognito: Authenticates users via JWT tokens.
+
+Lambda & API Gateway: Serves as the serverless backend to handle events and integrate services.
