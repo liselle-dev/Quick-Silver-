@@ -1,0 +1,130 @@
+processTollCrossing
+
+
+import json
+import os
+import time
+from datetime import datetime
+
+import boto3
+from botocore.exceptions import ClientError
+
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+
+dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+sns_client = boto3.client("sns", region_name=AWS_REGION)
+
+SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
+
+TRIPS_TABLE = dynamodb.Table(os.environ.get("TRIPS_TABLE"))
+PAYMENTS_TABLE = dynamodb.Table(os.environ.get("PAYMENTS_TABLE"))
+NOTIFICATIONS_TABLE = dynamodb.Table(os.environ.get("NOTIFICATIONS_TABLE"))
+
+
+def handler(event, context):
+    print("Received payment event:", json.dumps(event, indent=2))
+
+    try:
+        body = json.loads(event["body"]) if "body" in event else event
+
+        trip_id = body["tripId"]
+        user_id = body["userID"]
+        payment_method_id = body["paymentMethodId"]
+
+        # 1️⃣ Get trip
+        trip_response = TRIPS_TABLE.get_item(
+            Key={"userID": user_id, "id": trip_id}
+        )
+        trip = trip_response.get("Item")
+
+        if not trip:
+            return response(404, {"error": "Trip not found"})
+
+        if trip.get("status") == "paid":
+            return response(409, {"error": "Trip already paid"})
+
+        # 2️⃣ Get payment method
+        payment_response = PAYMENTS_TABLE.get_item(
+            Key={"userID": user_id, "id": payment_method_id}
+        )
+        payment_method = payment_response.get("Item")
+
+        if not payment_method:
+            return response(404, {"error": "Payment method not found"})
+
+        # 3️⃣ Process payment (mock)
+        confirmation_number = f"QS{str(int(time.time() * 1000))[-8:]}"
+        now_iso = datetime.utcnow().isoformat()
+
+        # 4️⃣ Update trip
+        TRIPS_TABLE.update_item(
+            Key={"userID": user_id, "id": trip_id},
+            UpdateExpression="""
+                SET #status = :status,
+                    payment_method = :pm,
+                    confirmation_number = :cn,
+                    updated_date = :ud
+            """,
+            ExpressionAttributeNames={"#status": "status"},
+            ExpressionAttributeValues={
+                ":status": "paid",
+                ":pm": payment_method["last_four"],
+                ":cn": confirmation_number,
+                ":ud": now_iso
+            }
+        )
+
+        # 5️⃣ Notification record
+        notification_id = f"notif-{int(time.time())}"
+
+        NOTIFICATIONS_TABLE.put_item(
+            Item={
+                "id": notification_id,
+                "userID": user_id,
+                "type": "payment_success",
+                "title": "Payment Successful",
+                "message": f"Your toll payment of ${float(trip['amount']):.2f} was processed successfully.",
+                "is_read": False,
+                "priority": "medium",
+                "trip_id": trip_id,
+                "metadata": {
+                    "confirmation_number": confirmation_number
+                },
+                "created_date": now_iso,
+                "updated_date": now_iso
+            }
+        )
+
+        # 6️⃣ SNS (non-critical)
+        try:
+            sns_message = (
+                f"Payment Successful!\n"
+                f"Amount: ${float(trip['amount']):.2f}\n"
+                f"Confirmation: {confirmation_number}\n"
+                f"Toll: {trip.get('toll_location')}\n"
+                f"Vehicle: {trip.get('license_plate')}"
+            )
+
+            sns_client.publish(
+                TopicArn=SNS_TOPIC_ARN,
+                Message=sns_message,
+                Subject="QuickSilver Payment Confirmation"
+            )
+        except Exception as sns_error:
+            print(f"SNS Error (non-critical): {sns_error}")
+
+        return response(200, {
+            "message": "Payment processed successfully",
+            "confirmationNumber": confirmation_number
+        })
+
+    except Exception as error:
+        print("Error processing payment:", str(error))
+        return response(500, {"error": "Internal server error"})
+
+
+def response(status_code, body):
+    return {
+        "statusCode": status_code,
+        "body": json.dumps(body)
+    }
