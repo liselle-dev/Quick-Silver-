@@ -1,0 +1,117 @@
+Sign-InLambdaFunction
+
+
+import json
+import boto3
+import os
+from datetime import datetime
+
+dynamodb = boto3.resource('dynamodb', region_name=os.environ['AWS_REGION'])
+sns_client = boto3.client('sns', region_name=os.environ['AWS_REGION'])
+
+def lambda_handler(event, context):
+    print('Received payment event:', json.dumps(event))
+    
+    try:
+        # Parse payment event data
+        body = json.loads(event.get('body', '{}')) if isinstance(event.get('body'), str) else event
+        
+        trip_id = body['tripId']
+        user_id = body['userId']
+        payment_method_id = body['paymentMethodId']
+        
+        # Fetch trip details
+        trips_table = dynamodb.Table('QuickSilver-Trips')
+        trip_response = trips_table.get_item(
+            Key={'userID': user_id, 'id': trip_id}
+        )
+        
+        if 'Item' not in trip_response:
+            return {
+                'statusCode': 404,
+                'body': json.dumps({'error': 'Trip not found'})
+            }
+        
+        trip = trip_response['Item']
+        
+        # Fetch payment method details
+        payment_methods_table = dynamodb.Table('QuickSilver-PaymentMethods')
+        pm_response = payment_methods_table.get_item(
+            Key={'userID': user_id, 'id': payment_method_id}
+        )
+        
+        if 'Item' not in pm_response:
+            return {
+                'statusCode': 404,
+                'body': json.dumps({'error': 'Payment method not found'})
+            }
+        
+        payment_method = pm_response['Item']
+        
+        # Generate confirmation number
+        confirmation_number = f"QS{int(datetime.now().timestamp())}"[-8:]
+        
+        # Update trip with payment info
+        now_iso = datetime.utcnow().isoformat() + 'Z'
+        trips_table.update_item(
+            Key={'userID': user_id, 'id': trip_id},
+            UpdateExpression='SET #status = :status, payment_method = :pm, confirmation_number = :conf, updated_date = :updated',
+            ExpressionAttributeNames={'#status': 'status'},
+            ExpressionAttributeValues={
+                ':status': 'paid',
+                ':pm': payment_method['last_four'],
+                ':conf': confirmation_number,
+                ':updated': now_iso
+            }
+        )
+        
+        # Create payment success notification in DynamoDB
+        notification_id = f"notif-{int(datetime.now().timestamp() * 1000)}"
+        notification = {
+            'id': notification_id,
+            'userID': user_id,
+            'type': 'payment_success',
+            'title': 'Payment Successful',
+            'message': f'Your ${float(trip["amount"]):.2f} toll payment has been processed. Confirmation: {confirmation_number}',
+            'is_read': False,
+            'priority': 'medium',
+            'metadata': {
+                'trip_id': trip_id,
+                'amount': float(trip['amount']),
+                'confirmation_number': confirmation_number
+            },
+            'trip_id': trip_id,
+            'created_date': now_iso,
+            'updated_date': now_iso
+        }
+        notifications_table = dynamodb.Table('QuickSilver-Notifications')
+        notifications_table.put_item(Item=notification)
+        
+        # Send SNS notification instead of SES
+        try:
+            sns_topic_arn = os.environ['SNS_TOPIC_ARN']  # Set this in Lambda environment variables
+            sns_message = f"Payment Successful for trip {trip_id}\nAmount: ${float(trip['amount']):.2f}\nConfirmation: {confirmation_number}"
+            
+            sns_client.publish(
+                TopicArn=sns_topic_arn,
+                Message=sns_message,
+                Subject='Payment Confirmation'
+            )
+        except Exception as sns_error:
+            print(f'SNS Error (non-critical): {sns_error}')
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': 'Payment processed successfully',
+                'confirmationNumber': confirmation_number,
+                'tripId': trip_id
+            })
+        }
+        
+    except Exception as error:
+        print(f'Error processing payment: {error}')
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(error)})
+        }

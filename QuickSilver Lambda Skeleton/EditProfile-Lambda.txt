@@ -1,0 +1,70 @@
+EditProfile-Lambda
+
+import json
+import os
+import boto3
+from botocore.exceptions import ClientError
+
+# Environment variables
+REGION = os.getenv("REGION")
+USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID")
+USERS_TABLE = os.getenv("USERS_TABLE")
+
+# AWS clients
+cognito = boto3.client("cognito-idp", region_name=REGION)
+dynamodb = boto3.resource("dynamodb", region_name=REGION)
+users_table = dynamodb.Table(USERS_TABLE)
+
+
+def lambda_handler(event, context):
+    try:
+        # Parse body (API Gateway)
+        if "body" in event:
+            body = json.loads(event["body"])
+        else:
+            body = event
+
+        email = body.get("email")
+        name = body.get("name")
+
+        if not email or not name:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Email and name are required"})
+            }
+
+        # 1️⃣ Update Cognito user attributes
+        cognito.admin_update_user_attributes(
+            UserPoolId=USER_POOL_ID,
+            Username=email,
+            UserAttributes=[
+                {"Name": "name", "Value": name}
+            ]
+        )
+
+        # 2️⃣ Update DynamoDB user record
+        users_table.update_item(
+            Key={"userId": email},
+            UpdateExpression="SET #n = :name",
+            ExpressionAttributeNames={"#n": "name"},
+            ExpressionAttributeValues={":name": name}
+        )
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Profile updated successfully"})
+        }
+
+    except ClientError as e:
+        print("AWS ClientError:", e)
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "Profile update failed", "error": str(e)})
+        }
+
+    except Exception as e:
+        print("General Error:", e)
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": "Profile update failed", "error": str(e)})
+        }

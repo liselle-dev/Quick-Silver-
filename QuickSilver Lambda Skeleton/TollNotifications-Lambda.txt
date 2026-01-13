@@ -1,0 +1,54 @@
+TollNotifications-Lambda
+
+
+import json
+import boto3
+from datetime import datetime
+from botocore.exceptions import ClientError
+
+# ----------------------------
+# Constants
+# ----------------------------
+REGION = "us-east-2"
+NOTIFICATIONS_TABLE_NAME = "QuickSilver-Notifications"
+
+# ----------------------------
+# AWS clients
+# ----------------------------
+dynamodb = boto3.resource("dynamodb", region_name=REGION)
+notifications_table = dynamodb.Table(NOTIFICATIONS_TABLE_NAME)
+
+# ----------------------------
+# Lambda handler
+# ----------------------------
+def lambda_handler(event, context):
+    try:
+        # SNS event structure
+        record = event["Records"][0]
+        message = json.loads(record["Sns"]["Message"])
+
+        timestamp = datetime.utcnow().isoformat()
+
+        # DynamoDB expects partition key exactly as defined: "userID"
+        item = {
+            "userID": message.get("userID", message.get("userId", "unknown")),  # match table key
+            "id": f"notif-{timestamp}",  # you can use id as sort key
+            "timestamp": timestamp,
+            "type": message.get("type", "General"),
+            "payload": message
+        }
+
+        notifications_table.put_item(Item=item)
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps("Notification stored successfully")
+        }
+
+    except ClientError as e:
+        print("DynamoDB ClientError:", e)
+        raise
+
+    except Exception as e:
+        print("General Error:", e)
+        raise
