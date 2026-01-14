@@ -28,9 +28,14 @@ def handler(event, context):
     try:
         body = json.loads(event["body"]) if "body" in event else event
 
-        trip_id = body["tripId"]
-        user_id = body["userID"]
-        payment_method_id = body["paymentMethodId"]
+        # ✅ Safe retrieval using .get()
+        trip_id = body.get("tripId")
+        user_id = body.get("userID")
+        payment_method_id = body.get("paymentMethodId")
+
+        # ✅ Validate required keys
+        if not trip_id or not user_id or not payment_method_id:
+            return response(400, {"error": "tripId, userID, and paymentMethodId are required"})
 
         # 1️⃣ Get trip
         trip_response = TRIPS_TABLE.get_item(
@@ -129,4 +134,5 @@ def response(status_code, body):
         "statusCode": status_code,
         "body": json.dumps(body)
     }
+
 
