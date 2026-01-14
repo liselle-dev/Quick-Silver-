@@ -14,7 +14,8 @@ AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 sns_client = boto3.client("sns", region_name=AWS_REGION)
 
-SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
+# Removed environment variable; using the ARN directly
+# SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
 
 TRIPS_TABLE = dynamodb.Table(os.environ.get("TRIPS_TABLE"))
 PAYMENTS_TABLE = dynamodb.Table(os.environ.get("PAYMENTS_TABLE"))
@@ -95,7 +96,7 @@ def handler(event, context):
             }
         )
 
-        # 6️⃣ SNS (non-critical)
+        # 6️⃣ SNS (non-critical) — ARN directly inserted
         try:
             sns_message = (
                 f"Payment Successful!\n"
@@ -106,7 +107,7 @@ def handler(event, context):
             )
 
             sns_client.publish(
-                TopicArn=SNS_TOPIC_ARN,
+                TopicArn="arn:aws:sns:us-east-2:142754574142:TollcrossingNotifications",
                 Message=sns_message,
                 Subject="QuickSilver Payment Confirmation"
             )
