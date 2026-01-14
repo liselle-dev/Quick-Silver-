@@ -1,5 +1,3 @@
-processTollPayment
-
 import json
 import boto3
 import os
@@ -11,7 +9,8 @@ AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 sns_client = boto3.client("sns", region_name=AWS_REGION)
 
-SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
+# Replaced environment variable with actual ARN
+SNS_TOPIC_ARN = "arn:aws:sns:us-east-2:142754574142:TollPaymentNotifications"
 
 TRIPS_TABLE_NAME = os.environ.get("TRIPS_TABLE", "QuickSilver-Trips")
 PAYMENTS_TABLE_NAME = os.environ.get("PAYMENTS_TABLE", "QuickSilver-PaymentMethods")
@@ -155,3 +154,4 @@ def response(status_code, body):
         "statusCode": status_code,
         "body": json.dumps(body)
     }
+
